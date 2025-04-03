@@ -5,6 +5,7 @@ const upload = require('../middleware/multer');
 const fs = require('fs');
 const path = require('path');
 
+
 // Add this route before module.exports
 router.get('/images/:filename', (req, res) => {
     const filePath = path.join(__dirname, '../public/images', req.params.filename);
@@ -28,7 +29,8 @@ router.get('/', eventController.getAllEvents);
 router.get('/:id', eventController.getEvent);
 
 // PUT /api/events/:id - Update event
-router.put('/:id', eventController.updateEvent);
+// router.put('/:id', eventController.updateEvent);
+router.put('/:id', upload.single('image'), eventController.updateEvent);
 
 // DELETE /api/events/:id - Delete event
 router.delete('/:id', eventController.deleteEvent);

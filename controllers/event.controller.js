@@ -115,80 +115,73 @@ getEvent: async (req, res) => {
   // Update event
   updateEvent: async (req, res) => {
     try {
-      const { title, description, date, location, image } = req.body;
-
-      // Validate date if provided
-      if (date && isNaN(new Date(date))) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Invalid date format'
-        });
-      }
-
-      const updateData = {
-        ...req.body,
-        updatedAt: new Date()
-      };
-
-      // If date is being updated, convert to Date object
-      if (date) {
-        updateData.date = new Date(date);
-      }
-
-      const updatedEvent = await Event.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        { 
-          new: true,
-          runValidators: true 
+      const eventId = req.params.id;
+      let updates = {};
+  
+      // Process non-file fields
+      if (req.body.eventName) updates.eventName = req.body.eventName;
+      if (req.body.eventDescription) updates.eventDescription = req.body.eventDescription;
+      if (req.body.eventDate) updates.eventDate = req.body.eventDate;
+      if (req.body.eventTime) updates.eventTime = req.body.eventTime;
+      if (req.body.venue) updates.venue = req.body.venue;
+      if (req.body.totalTickets) updates.totalTickets = req.body.totalTickets;
+      if (req.body.status) updates.status = req.body.status;
+  
+      // Process ticket types
+      if (req.body.ticketTypes) {
+        try {
+          updates.ticketTypes = typeof req.body.ticketTypes === 'string' 
+            ? JSON.parse(req.body.ticketTypes)
+            : req.body.ticketTypes;
+        } catch (e) {
+          return res.status(400).json({ message: 'Invalid ticketTypes format' });
         }
+      }
+  
+      // Process image if uploaded
+      if (req.file) {
+        const newImagePath = `/images/${req.file.filename}`;
+        
+        // Get old image path to delete it later
+        const oldEvent = await Event.findById(eventId);
+        const oldImagePath = oldEvent?.image;
+        
+        updates.image = newImagePath;
+  
+        // Delete old image file
+        if (oldImagePath) {
+          const fullOldPath = path.join(__dirname, '../public', oldImagePath);
+          if (fs.existsSync(fullOldPath)) {
+            fs.unlinkSync(fullOldPath);
+          }
+        }
+      }
+  
+      const updatedEvent = await Event.findByIdAndUpdate(
+        eventId,
+        { $set: updates },
+        { new: true, runValidators: true }
       );
-
+  
       if (!updatedEvent) {
-        return res.status(404).json({ 
-          status: 'error', 
-          message: 'Event not found' 
-        });
+        // Clean up if we uploaded a new image but event wasn't found
+        if (req.file) {
+          fs.unlinkSync(path.join(__dirname, '../public/images', req.file.filename));
+        }
+        return res.status(404).json({ message: 'Event not found' });
       }
-
-      res.status(200).json({
-        status: 'success',
-        data: updatedEvent,
-        message: 'Event updated successfully'
-      });
-
-    } catch (err) {
-      console.error('Error updating event:', err);
+  
+      res.status(200).json(updatedEvent);
+    } catch (error) {
+      // Clean up uploaded file if error occurred
+      if (req.file) {
+        fs.unlinkSync(path.join(__dirname, '../public/images', req.file.filename));
+      }
       
-      // Handle duplicate key errors
-      if (err.code === 11000) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Event with this title already exists'
-        });
-      }
-
-      // Handle validation errors
-      if (err.name === 'ValidationError') {
-        const errors = Object.values(err.errors).map(el => el.message);
-        return res.status(400).json({
-          status: 'error',
-          message: 'Validation failed',
-          errors
-        });
-      }
-
-      if (err.name === 'CastError') {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Invalid event ID format'
-        });
-      }
-
-      res.status(500).json({
-        status: 'error',
+      console.error('Error updating event:', error);
+      res.status(500).json({ 
         message: 'Failed to update event',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        error: error.message 
       });
     }
   },
