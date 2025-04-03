@@ -21,14 +21,14 @@ const adminController = {
   // Create new admin
   createAdmin: async (req, res) => {
     try {
-      const { name, email, password, mobile } = req.body;
+      const { userName, email, password, mobile, role } = req.body;
       
-      // Check if email already exists
-      const existingAdmin = await Admin.findOne({ email });
+      // Check if email or userName already exists
+      const existingAdmin = await Admin.findOne({ $or: [{ email }, { userName }] });
       if (existingAdmin) {
         return res.status(400).json({ 
           status: 'error', 
-          message: 'Email already in use' 
+          message: existingAdmin.email === email ? 'Email already in use' : 'Username already in use'
         });
       }
 
@@ -37,10 +37,11 @@ const adminController = {
       
       // Create admin
       const admin = new Admin({ 
-        name, 
+        userName,
         email, 
         password: hashedPassword, 
-        mobile 
+        mobile,
+        role
       });
       
       await admin.save();
@@ -86,11 +87,11 @@ const adminController = {
   // Update admin
   updateAdmin: async (req, res) => {
     try {
-      const { name, mobile } = req.body;
+      const { userName, mobile, role } = req.body;
       
       const admin = await Admin.findByIdAndUpdate(
         req.params.id,
-        { name, mobile },
+        { userName, mobile, role },
         { new: true, runValidators: true }
       ).select('-password');
       
