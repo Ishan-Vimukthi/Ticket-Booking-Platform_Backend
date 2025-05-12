@@ -1,15 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const app = express();
+import cookieParser from 'cookie-parser';
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const fs = require('fs'); // Only declare this once at the top
-// app.js or server.js
 const venueRoutes = require('./routes/venue.route');
-const authRoutes = require('./routes/auth.route');
+import adminRoutes from './routes/admin.route.js';
+import { errorHandler } from './middleware/errorMiddleware.js';
+
 
 // Environment variables
 const PORT = process.env.PORT || 3000;
@@ -23,8 +25,12 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Middleware
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(helmet({
-  crossOriginResourcePolicy: false // or { policy: "cross-origin" }
+  crossOriginResourcePolicy: false
 }));
 app.use(morgan('dev'));
 app.use(express.json());
@@ -35,6 +41,7 @@ app.use(cors({
   credentials: true,
   exposedHeaders: ['Content-Type', 'Authorization', 'Cross-Origin-Resource-Policy']
 }));
+app.use(cookieParser());
 
 // Serve static files with proper headers
 app.use('/images', express.static(path.join(__dirname, 'public', 'images'), {
@@ -51,12 +58,16 @@ const adminRoutes = require('./routes/admin.route');
 app.use('/api/events', eventRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/venues', venueRoutes);
-app.use('/api/auth', authRoutes);
+app.use(errorHandler);
 
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date() });
+});
+
+app.get('/', (req, res) => {
+  res.send('Admin API is running...');
 });
 
 // Error handling middleware

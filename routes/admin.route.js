@@ -1,13 +1,24 @@
-const express = require('express');
+import express from 'express';
+import {
+  authAdmin,
+  registerAdmin,
+  logoutAdmin,
+  getAdminProfile,
+  updateAdminProfile,
+  getAdmins,
+} from '../controllers/auth.controller.js';
+import { protect, superAdmin } from '../middleware/authMiddleware.js';
+
 const router = express.Router();
-const adminController = require('../controllers/admin.controller');
 
-// Admin CRUD routes
-router.get('/', adminController.getAllAdmins);
-router.post('/', adminController.createAdmin);
-router.get('/:id', adminController.getAdmin);
-router.put('/:id', adminController.updateAdmin);
-router.delete('/:id', adminController.deleteAdmin);
-router.patch('/:id/change-password', adminController.changePassword);
+router.route('/')
+  .post(protect, superAdmin, registerAdmin)
+  .get(protect, superAdmin, getAdmins);
+router.post('/logout', logoutAdmin);
+router.post('/login', authAdmin);
+router
+  .route('/profile')
+  .get(protect, getAdminProfile)
+  .put(protect, updateAdminProfile);
 
-module.exports = router;
+export default router;
