@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const app = express();
-import cookieParser from 'cookie-parser';
+const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
@@ -9,8 +9,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const fs = require('fs'); // Only declare this once at the top
 const venueRoutes = require('./routes/venue.route');
-import adminRoutes from './routes/admin.route.js';
-import { errorHandler } from './middleware/errorMiddleware.js';
+//const adminRoutes = require('./routes/admin.route.js');
+const { errorHandler } = require('./middleware/errorMiddleware.js');
 
 
 // Environment variables
