@@ -13,6 +13,11 @@ const protect = asyncHandler(async (req, res, next) => {
 
       req.admin = await Admin.findById(decoded.adminId).select('-password');
 
+      if (!req.admin) {
+        res.status(401);
+        throw new Error('Not authorized, admin not found');
+      }
+
       next();
     } catch (error) {
       console.error(error);

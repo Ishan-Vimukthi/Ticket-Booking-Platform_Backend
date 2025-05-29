@@ -7,9 +7,8 @@ const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const fs = require('fs'); // Only declare this once at the top
+const fs = require('fs');
 const venueRoutes = require('./routes/venue.route');
-//const adminRoutes = require('./routes/admin.route.js');
 const { errorHandler } = require('./middleware/errorMiddleware.js');
 
 
@@ -25,29 +24,26 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Middleware
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true,
-}));
 app.use(helmet({
-  crossOriginResourcePolicy: false
+  crossOriginResourcePolicy: false // Keep if needed, or configure as per specific requirements
 }));
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: CLIENT_URL }));
-app.use(cors({
-  origin: true, // or specify your frontend URL
-  credentials: true,
-  exposedHeaders: ['Content-Type', 'Authorization', 'Cross-Origin-Resource-Policy']
-}));
 app.use(cookieParser());
+
+// Consolidated CORS configuration
+app.use(cors({
+  origin: CLIENT_URL, // Using the environment variable for the client URL
+  credentials: true,
+  exposedHeaders: ['Content-Type', 'Authorization', 'Cross-Origin-Resource-Policy'] // Keep if needed
+}));
 
 // Serve static files with proper headers
 app.use('/images', express.static(path.join(__dirname, 'public', 'images'), {
   setHeaders: (res) => {
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin'); // Allows images to be embedded
+    res.set('Access-Control-Allow-Origin', CLIENT_URL); // Restrict to client URL
   }
 }));
 
@@ -70,18 +66,22 @@ app.get('/', (req, res) => {
   res.send('Admin API is running...');
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: err.message });
-});
-
 // Database connection
+let server;
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => {
+    console.log('Connected to MongoDB');
+    // Start server only if not in test environment or if run directly
+    if (process.env.NODE_ENV !== 'test' || require.main === module) {
+      server = app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    }
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1); // Exit if DB connection fails at start
+  });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Export the app and server for testing and graceful shutdown
+export { app, server };

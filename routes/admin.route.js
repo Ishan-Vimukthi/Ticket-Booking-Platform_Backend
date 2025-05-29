@@ -14,7 +14,7 @@ const router = express.Router();
 router.route('/')
   .post(protect, superAdmin, registerAdmin)
   .get(protect, superAdmin, getAdmins);
-router.post('/logout', logoutAdmin);
+router.post('/logout', protect, logoutAdmin);
 router.post('/login', authAdmin);
 router
   .route('/profile')
