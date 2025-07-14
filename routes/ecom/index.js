@@ -5,6 +5,7 @@ const customerRoutes = require('./customerRoutes');
 const orderRoutes = require('./orderRoutes');
 const stockRoutes = require('./stockRoutes');
 const dashBoardRoutes = require('./dashBoardRoutes');
+const dashboardStatsRoutes = require('./dashboardStatsRoutes'); // Optimized dashboard endpoint
 const paymentRoutes = require('./paymentRoutes'); // Add payment routes
 
 module.exports = (app) => {
@@ -36,5 +37,6 @@ module.exports = (app) => {
     app.use('/api/ecom/orders', orderRoutes);
     app.use('/api/ecom/stock', stockRoutes);
     app.use('/api/ecom/dashboard', dashBoardRoutes);
+    app.use('/api/ecom/dashboard-stats', dashboardStatsRoutes); // Optimized dashboard stats
     app.use('/api/ecom/payments', paymentRoutes); // Add Stripe payment routes
 };
