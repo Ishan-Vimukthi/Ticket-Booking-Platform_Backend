@@ -95,9 +95,179 @@ const getLowStock = async (req, res) => {
     }
 };
 
+/**
+ * Bulk update stock quantities - simplified
+ */
+const bulkUpdateStock = async (req, res) => {
+    const { updates } = req.body;
+
+    if (!updates || !Array.isArray(updates)) {
+        return res.status(400).json({ 
+            status: "FAILED", 
+            message: "Updates array is required" 
+        });
+    }
+
+    try {
+        const results = [];
+
+        for (const update of updates) {
+            const { productId, quantity } = update;
+
+            if (!mongoose.Types.ObjectId.isValid(productId) || typeof quantity !== 'number') {
+                continue; // Skip invalid updates
+            }
+
+            try {
+                const product = await EcomProduct.findOneAndUpdate(
+                    { _id: productId, isDeleted: false },
+                    { quantity: quantity, updatedAt: new Date() },
+                    { new: true }
+                );
+
+                if (product) {
+                    results.push({
+                        productId,
+                        productName: product.name,
+                        newQuantity: quantity
+                    });
+                }
+            } catch (error) {
+                // Skip errors and continue
+                continue;
+            }
+        }
+
+        return res.json({
+            status: "SUCCESS",
+            message: `Updated ${results.length} products`,
+            data: results
+        });
+
+    } catch (err) {
+        console.error('Bulk update error:', err);
+        return res.status(500).json({ 
+            status: "FAILED", 
+            message: "Internal server error"
+        });
+    }
+};
+
+/**
+ * Get stock status for products with simple data structure
+ */
+const getStockStatus = async (req, res) => {
+    try {
+        const products = await EcomProduct.find({ 
+            deletedAt: 0, 
+            isDeleted: false 
+        })
+        .populate('category')
+        .sort({ createdAt: -1 });
+
+        const stockData = products.map(product => {
+            const quantity = product.quantity || 0;
+            
+            // Simple status logic
+            let status = 'healthy';
+            if (quantity === 0) {
+                status = 'out_of_stock';
+            } else if (quantity <= 20) {
+                status = 'low';
+            } else if (quantity <= 40) {
+                status = 'medium';
+            }
+
+            return {
+                _id: product._id,
+                name: product.name,
+                sku: product.productCode,
+                quantity: quantity,
+                price: product.price || 0,
+                status: status,
+                images: product.images || [],
+                sizes: product.sizes || [],
+                colors: product.colors || [],
+                createdAt: product.createdAt,
+                updatedAt: product.updatedAt
+            };
+        });
+
+        return res.json({
+            status: "SUCCESS",
+            data: stockData
+        });
+
+    } catch (err) {
+        console.error('Get stock status error:', err);
+        return res.status(500).json({ 
+            status: "FAILED", 
+            message: "Internal server error", 
+            error: err.message 
+        });
+    }
+};
+
+/**
+ * Update stock settings for a product - simplified
+ */
+const updateStockSettings = async (req, res) => {
+    const { productId, minStockLevel, maxStockLevel, reorderPoint } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        return res.status(400).json({ 
+            status: "FAILED", 
+            message: "Invalid product ID" 
+        });
+    }
+
+    try {
+        const updateFields = {};
+        if (minStockLevel !== undefined) updateFields.minStockLevel = minStockLevel;
+        if (maxStockLevel !== undefined) updateFields.maxStockLevel = maxStockLevel;
+        if (reorderPoint !== undefined) updateFields.reorderPoint = reorderPoint;
+        updateFields.updatedAt = new Date();
+
+        const product = await EcomProduct.findOneAndUpdate(
+            { _id: productId, isDeleted: false },
+            updateFields,
+            { new: true }
+        );
+
+        if (!product) {
+            return res.status(404).json({ 
+                status: "FAILED", 
+                message: "Product not found" 
+            });
+        }
+
+        return res.json({
+            status: "SUCCESS",
+            message: "Stock settings updated",
+            data: {
+                productId: product._id,
+                productName: product.name,
+                minStockLevel: product.minStockLevel,
+                maxStockLevel: product.maxStockLevel,
+                reorderPoint: product.reorderPoint
+            }
+        });
+
+    } catch (err) {
+        console.error('Update stock settings error:', err);
+        return res.status(500).json({ 
+            status: "FAILED", 
+            message: "Internal server error"
+        });
+    }
+};
+
 module.exports = {
     addStock,
     getAllStock,
     updateStock,
-    getLowStock
+    getLowStock,
+    bulkUpdateStock,
+    getStockStatus,
+    updateStockSettings
 };

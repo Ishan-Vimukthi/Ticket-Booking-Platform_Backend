@@ -232,7 +232,7 @@ const confirmPayment = async (req, res) => {
         }
 
         // Update order status
-        order.paymentStatus = 'completed';
+        order.paymentStatus = 'succeeded';
         order.status = 'confirmed';
         order.completedAt = new Date();
         await order.save();
