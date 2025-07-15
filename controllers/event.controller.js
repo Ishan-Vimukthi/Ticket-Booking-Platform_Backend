@@ -352,14 +352,32 @@ const eventController = {
         seatsToBookDetails.push({ seatId: seat.id, ticketType: selectedSeat.ticketType });
       }
 
-      // Backend price calculation could be added here for more security
-      // For now, trusting client-side totalPrice
+      // Backend price calculation
+      let calculatedTotalPrice = 0;
+      for (const selectedSeat of selectedSeats) {
+        const ticketType = event.ticketTypes.find(tt => tt.type === selectedSeat.ticketType);
+        if (ticketType) {
+          calculatedTotalPrice += ticketType.price;
+        }
+      }
+
+      // Apply discount based on the number of seats
+      const numberOfSeats = selectedSeats.length;
+      let discountPercentage = 0;
+      if (numberOfSeats > 10) {
+        discountPercentage = 0.25; // 25% discount
+      } else if (numberOfSeats >= 5) {
+        discountPercentage = 0.10; // 10% discount
+      }
+
+      const discountedPrice = calculatedTotalPrice * (1 - discountPercentage);
+
 
       // 2. Create Stripe PaymentIntent
       let paymentIntent;
       try {
         paymentIntent = await stripe.paymentIntents.create({
-          amount: Math.round(totalPrice * 100), // Amount in cents
+          amount: Math.round(discountedPrice * 100), // Amount in cents
           currency: 'usd',
           payment_method: paymentMethodId,
           confirm: true, // Confirm the payment immediately
@@ -400,7 +418,7 @@ const eventController = {
           ticketHolderName: ticketHolderDetails.name,
           ticketHolderEmail: ticketHolderDetails.email,
           ticketHolderPhone: ticketHolderDetails.phone,
-          totalAmount: totalPrice,
+          totalAmount: discountedPrice,
           paymentId: paymentIntent.id,
           bookingDate: new Date(),
         });
@@ -412,7 +430,7 @@ const eventController = {
           event: { eventName: event.eventName, eventDate: event.eventDate },
           bookedSeats: seatsToBookDetails.map(s => s.seatId),
           ticketHolder: ticketHolderDetails,
-          totalPaid: totalPrice
+          totalPaid: discountedPrice
         });
 
         // Send confirmation email with QR code
@@ -421,7 +439,7 @@ const eventController = {
           const venue = await Venue.findById(event.venue);
           const venueName = venue ? venue.name : 'N/A';
           const formattedEventDate = new Date(event.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-          const formattedTotalPrice = totalPrice.toFixed(2);
+          const formattedTotalPrice = discountedPrice.toFixed(2);
           const currentYear = new Date().getFullYear();
           const qrCodeText = `BookingID:${newBooking._id}|Event:${event.eventName}|User:${ticketHolderDetails.email}`; // Example text for QR
 
