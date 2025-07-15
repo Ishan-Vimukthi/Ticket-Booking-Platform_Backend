@@ -26,9 +26,22 @@ const EcomOrderSchema = new Schema({
         address: {
             street: { type: String, required: true },
             city: { type: String, required: true },
-            state: { type: String, required: true },
-            zipCode: { type: String, required: true },
-            country: { type: String, default: 'USA' }
+            state: { 
+                type: String, 
+                required: true,
+                enum: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
+            },
+            postalCode: { 
+                type: String, 
+                required: true,
+                validate: {
+                    validator: function(value) {
+                        return /^\d{4}$/.test(value);
+                    },
+                    message: 'Invalid Australian postal code. Must be 4 digits'
+                }
+            },
+            country: { type: String, default: 'AU', enum: ['AU'] }
         }
     },
     
@@ -37,9 +50,8 @@ const EcomOrderSchema = new Schema({
     
     // Pricing
     subtotal: { type: Number, required: true },
-    tax: { type: Number, default: 0 },
     shipping: { type: Number, default: 0 },
-    total: { type: Number, required: true },
+    total: { type: Number, required: true }, // subtotal + shipping (no tax)
     
     // Payment information (Stripe Integration)
     paymentMethod: { type: String, default: 'stripe' },

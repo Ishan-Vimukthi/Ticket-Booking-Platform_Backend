@@ -75,8 +75,8 @@ Request Body:
       "country": "USA"
     }
   },
-  "shipping": 10.00,
-  "tax": 5.50
+  "shipping": 5.00
+}
 }
 
 Response:
@@ -87,10 +87,9 @@ Response:
     "paymentIntentId": "pi_3Xx...",
     "orderId": "675a1b2c3d4e5f6789abcdef",
     "orderNumber": "ORD-1752416745-0001",
-    "total": 75.50,
+    "total": 65.00,
     "subtotal": 60.00,
-    "tax": 5.50,
-    "shipping": 10.00
+    "shipping": 5.00
   }
 }
 ```
@@ -213,8 +212,8 @@ const CheckoutForm = ({ cartItems, customerInfo, total }) => {
         body: JSON.stringify({
           cartItems,
           customerInfo,
-          shipping: 10.00,
-          tax: total * 0.08 // 8% tax
+          shipping: 5.00
+          // No tax for Australian customers
         })
       });
 

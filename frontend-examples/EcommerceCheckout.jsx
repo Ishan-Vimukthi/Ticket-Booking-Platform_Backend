@@ -51,13 +51,11 @@ const CheckoutForm = ({ cartItems, customerInfo, onSuccess, onError }) => {
 
   const calculateTotal = () => {
     const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const shipping = 10.00;
-    const tax = subtotal * 0.08; // 8% tax
+    const shipping = subtotal >= 50 ? 0.00 : 5.00; // Free shipping over $50, otherwise $5
     return {
       subtotal: subtotal.toFixed(2),
       shipping: shipping.toFixed(2),
-      tax: tax.toFixed(2),
-      total: (subtotal + shipping + tax).toFixed(2)
+      total: (subtotal + shipping).toFixed(2) // No tax for Australian customers
     };
   };
 
@@ -89,8 +87,8 @@ const CheckoutForm = ({ cartItems, customerInfo, onSuccess, onError }) => {
             color: item.color || 'Default'
           })),
           customerInfo,
-          shipping: parseFloat(totals.shipping),
-          tax: parseFloat(totals.tax)
+          shipping: parseFloat(totals.shipping)
+          // No tax for Australian customers
         }),
       });
 
@@ -116,8 +114,8 @@ const CheckoutForm = ({ cartItems, customerInfo, onSuccess, onError }) => {
                 line1: customerInfo.address.street,
                 city: customerInfo.address.city,
                 state: customerInfo.address.state,
-                postal_code: customerInfo.address.zipCode,
-                country: customerInfo.address.country || 'US',
+                postal_code: customerInfo.address.postalCode,
+                country: customerInfo.address.country || 'AU',
               },
             },
           },
@@ -186,10 +184,6 @@ const CheckoutForm = ({ cartItems, customerInfo, onSuccess, onError }) => {
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>Shipping:</span>
           <span>${totals.shipping}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Tax:</span>
-          <span>${totals.tax}</span>
         </div>
         <hr />
         <div style={{ 
@@ -281,17 +275,17 @@ const EcommerceCheckout = () => {
     }
   ]);
 
-  // Sample customer info - replace with your actual customer data
+  // Sample customer info - Australian address format
   const customerInfo = {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '123-456-7890',
+    name: 'John Smith',
+    email: 'john.smith@example.com',
+    phone: '+61 2 1234 5678',
     address: {
-      street: '123 Main Street',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      country: 'US'
+      street: '123 Collins Street',
+      city: 'Melbourne',
+      state: 'VIC', // Australian state code
+      postalCode: '3000', // 4-digit Australian postal code
+      country: 'AU'
     }
   };
 

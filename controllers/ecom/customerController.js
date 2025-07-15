@@ -6,10 +6,38 @@ const mongoose = require('mongoose');
  * Add a new customer
  */
 const addCustomer = async (req, res) => {
-    const { firstName, lastName, email, phone, address, city, state } = req.body;
+    const { firstName, lastName, email, phone, address } = req.body;
 
-    if (!firstName || !lastName || !email || !phone || !address || !city || !state) {
-        return res.status(400).json({ status: "FAILED", message: "All fields are required" });
+    if (!firstName || !lastName || !email || !phone || !address) {
+        return res.status(400).json({ 
+            status: "FAILED", 
+            message: "All fields are required: firstName, lastName, email, phone, address" 
+        });
+    }
+
+    // Validate address structure
+    if (!address.street || !address.city || !address.state || !address.postalCode) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Address must include street, city, state, and postalCode"
+        });
+    }
+
+    // Validate Australian state code
+    const validStates = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+    if (!validStates.includes(address.state)) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: `Invalid state code '${address.state}'. Must be one of: ${validStates.join(', ')}`
+        });
+    }
+
+    // Validate postal code
+    if (!/^\d{4}$/.test(address.postalCode)) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Invalid postal code. Must be 4 digits (e.g., 2000)"
+        });
     }
 
     try {
@@ -18,17 +46,29 @@ const addCustomer = async (req, res) => {
             lastName,
             email,
             phone,
-            address,
-            city,
-            state,
+            address: {
+                street: address.street,
+                city: address.city,
+                state: address.state,
+                postalCode: address.postalCode,
+                country: 'AU'
+            },
             deletedAt: 0
         });
 
         await newCustomer.save();
-        return res.status(201).json({ status: "SUCCESS", message: "Customer added successfully", data: newCustomer });
+        return res.status(201).json({ 
+            status: "SUCCESS", 
+            message: "Customer added successfully", 
+            data: newCustomer 
+        });
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ status: "FAILED", message: "Internal server error", error: err.message });
+        return res.status(500).json({ 
+            status: "FAILED", 
+            message: "Internal server error", 
+            error: err.message 
+        });
     }
 };
 
@@ -175,6 +215,29 @@ const updateCustomer = async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ status: "FAILED", message: "Invalid customer ID" });
+    }
+
+    // Validate address structure if provided
+    if (updateData.address) {
+        // Validate Australian state code
+        const validStates = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+        if (updateData.address.state && !validStates.includes(updateData.address.state)) {
+            return res.status(400).json({
+                status: "FAILED",
+                message: `Invalid state code '${updateData.address.state}'. Must be one of: ${validStates.join(', ')}`
+            });
+        }
+
+        // Validate postal code
+        if (updateData.address.postalCode && !/^\d{4}$/.test(updateData.address.postalCode)) {
+            return res.status(400).json({
+                status: "FAILED",
+                message: "Invalid postal code. Must be 4 digits (e.g., 2000)"
+            });
+        }
+
+        // Ensure country is AU
+        updateData.address.country = 'AU';
     }
 
     try {

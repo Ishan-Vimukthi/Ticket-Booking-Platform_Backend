@@ -29,7 +29,7 @@ const createPaymentIntent = async (req, res) => {
         console.log('=== Payment Intent Request ===');
         console.log('Request body:', JSON.stringify(req.body, null, 2));
         
-        const { cartItems, customerInfo, shipping = 0, tax = 0 } = req.body;
+        const { cartItems, customerInfo, shipping = 0 } = req.body;
 
         // Validation
         if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
@@ -49,6 +49,28 @@ const createPaymentIntent = async (req, res) => {
                 success: false, 
                 message: "Customer name and email are required" 
             });
+        }
+
+        // Validate Australian address structure
+        const validStates = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+        const addressInfo = customerInfo.address;
+        
+        if (addressInfo) {
+            // Check state code
+            if (addressInfo.state && !validStates.includes(addressInfo.state)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid Australian state code '${addressInfo.state}'. Must be one of: ${validStates.join(', ')}`
+                });
+            }
+            
+            // Check postal code format
+            if (addressInfo.postalCode && !/^\d{4}$/.test(addressInfo.postalCode)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid Australian postal code. Must be 4 digits (e.g., 2000)"
+                });
+            }
         }
 
         console.log('✅ Basic validation passed');
@@ -118,8 +140,8 @@ const createPaymentIntent = async (req, res) => {
             });
         }
 
-        const totalAmount = subtotal + shipping + tax;
-        console.log('✅ Totals calculated - Subtotal:', subtotal, 'Total:', totalAmount);
+        const totalAmount = subtotal + shipping;
+        console.log('✅ Totals calculated - Subtotal:', subtotal, 'Shipping:', shipping, 'Total:', totalAmount);
 
         // Create Stripe Payment Intent
         const paymentIntent = await stripe.paymentIntents.create({
@@ -135,6 +157,7 @@ const createPaymentIntent = async (req, res) => {
                 customer_email: customerInfo.email,
                 item_count: validatedItems.length.toString(),
                 subtotal: subtotal.toString(),
+                shipping: shipping.toString(),
                 total: totalAmount.toString()
             }
         });
@@ -149,16 +172,15 @@ const createPaymentIntent = async (req, res) => {
                 email: customerInfo.email,
                 phone: customerInfo.phone || '',
                 address: {
-                    street: customerInfo.address || '',
-                    city: customerInfo.city || '',
-                    state: customerInfo.state || '',
-                    zipCode: customerInfo.postalCode || customerInfo.zipCode || '',
-                    country: customerInfo.country || 'AU'
+                    street: customerInfo.address?.street || customerInfo.address || '',
+                    city: customerInfo.address?.city || customerInfo.city || '',
+                    state: customerInfo.address?.state || customerInfo.state || '',
+                    postalCode: customerInfo.address?.postalCode || customerInfo.postalCode || customerInfo.zipCode || '',
+                    country: 'AU'
                 }
             },
             items: validatedItems,
             subtotal: subtotal,
-            tax: tax,
             shipping: shipping,
             total: totalAmount,
             paymentIntentId: paymentIntent.id,
