@@ -70,6 +70,16 @@ app.use('/api/venues', venueRoutes);
 ecomRoutes(app);
 
 
+// Health check endpoint for Render
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'Server is running', 
+    message: 'Ticket Booking Platform Backend API',
+    timestamp: new Date(),
+    port: PORT 
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date() });
@@ -83,10 +93,22 @@ app.use((err, req, res, next) => {
 
 // Database connection
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
+  .then(() => {
+    console.log('Connected to MongoDB');
+    
+    // Start server only after database connection
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log(`🌐 Health check available at: http://0.0.0.0:${PORT}/`);
+      console.log(`📊 API health check: http://0.0.0.0:${PORT}/api/health`);
+      
+      // Signal that the app is ready (for cloud platforms)
+      if (process.send) {
+        process.send('ready');
+      }
+    });
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
