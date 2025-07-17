@@ -638,7 +638,7 @@ const eventController = {
       console.error('Error fetching total users:', err);
       res.status(500).json({
         status: 'error',
-        message: 'Failed to fetch total users countt'
+        message: 'Failed to fetch total users count'
       });
     }
   }
